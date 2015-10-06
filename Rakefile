@@ -30,15 +30,16 @@ def create_manifest(path)
   s = ""
   s += "Manifest-Version: 1.0\n"
   s += "Main-Class: #{PACKAGE}\n"
-  s += "Class-Path: . ./runtime/kotlin-runtime.jar ./lib/*.jar"
+  s += "Class-Path: . kotlin-runtime.jar *.jar\n"
 
   puts "Generating manifest"
   File.write(path, s)
 end
 
 def create_jar(manifest_file)
-  id = Random.rand(10000);
-  sh "jar -cvfm tmp#{id}.jar #{manifest_file} -C #{build_path} ."
+  random = Random.new()
+  id = random.rand(1000000)
+  sh "jar -cfm tmp#{id}.jar #{manifest_file} -C #{build_path} ."
   sh "mv tmp#{id}.jar #{DEPLOY}/#{SRC}.jar"
 end
 
@@ -61,7 +62,7 @@ def clean_build_src
 end
 
 task :run do
-  if not build_type? 'debug'
+  if is_built? and not build_type? 'debug'
     puts "[ERROR] Please run 'deploy'"
     return
   end
@@ -70,7 +71,7 @@ task :run do
     Rake::Task["build"].execute
   end
 
-  sh "cd #{build_path}; #{JAVA} -cp .:../runtime/kotlin-runtime.jar:../lib/*.jar #{PACKAGE}"
+  sh "cd #{BUILD}/debug; #{JAVA} -cp .:../../runtime/kotlin-runtime.jar:../../lib/*.jar #{PACKAGE}"
 end
 
 task :build do
@@ -80,8 +81,8 @@ task :build do
     clean_build_src
   else
     sh "mkdir -p #{build_path}"
-    # sh "cp #{LIB}/* #{build_path}"
-    # sh "cp #{RUNTIME_DIR}/* #{build_path}"
+    # sh "cp #{LIB}/* #{build_path}/lib"
+    # sh "cp #{RUNTIME_DIR}/* #{build_path}/runtime"
   end
 
   sh "#{KOTLINC} #{SRCFILE} -d #{build_path}"
@@ -93,9 +94,9 @@ task :deploy do
   if is_built? and build_type? 'release'
     clean_build_src
   else
-    sh "mkdir -p #{build_path} #{build_path}/lib #{build_path}/runtime #{DEPLOY}"
-    sh "cp #{LIB}/* #{build_path}/lib"
-    sh "cp #{RUNTIME_DIR}/* #{build_path}/runtime"
+    sh "mkdir -p #{build_path} #{DEPLOY}"
+    sh "cp #{LIB}/* #{build_path}"
+    sh "cp #{RUNTIME_DIR}/* #{build_path}"
   end
 
   sh "#{KOTLINC} #{SRCFILE} -d #{build_path}"
